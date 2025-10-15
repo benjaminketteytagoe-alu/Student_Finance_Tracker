@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Bs Student Finance Tracker</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/responsive.css">
+</head>
+
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <header>
+        <div class="container">
+            <h1>ALU's Student Finance Tracker</h1>
+        </div>
+    </header>
+
+    <nav aria-label="Main navigation">
+        <div class="container">
+            <ul class="nav-tabs" role="tablist">
+                <li role="presentation"><button role="tab" aria-selected="true" aria-controls="dashboard"
+                        id="tab-dashboard" class="active">Dashboard</button></li>
+                <li role="presentation"><button role="tab" aria-selected="false" aria-controls="records"
+                        id="tab-records">Records</button></li>
+                <li role="presentation"><button role="tab" aria-selected="false" aria-controls="add" id="tab-add">Add
+                        Transaction</button></li>
+                <li role="presentation"><button role="tab" aria-selected="false" aria-controls="settings"
+                        id="tab-settings">Settings</button></li>
+                <li role="presentation"><button role="tab" aria-selected="false" aria-controls="about"
+                        id="tab-about">About</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main id="main-content" class="container">
+        <section id="dashboard" class="active" role="tabpanel" aria-labelledby="tab-dashboard">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Transactions</div>
+                    <div class="stat-value" id="stat-total">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Spent</div>
+                    <div class="stat-value" id="stat-spent">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Top Category</div>
+                    <div class="stat-value" id="stat-top-category">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Last 7 Days</div>
+                    <div class="stat-value" id="stat-week">$0.00</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Budget Overview</h2>
+                <div id="budget-overview" aria-live="polite"></div>
+            </div>
+
+            <div class="card">
+                <h2>Recent Transactions</h2>
+                <div id="recent-transactions"></div>
+            </div>
+        </section>
+
+        <section id="records" role="tabpanel" aria-labelledby="tab-records">
+            <div class="card">
+                <h2>All Transactions</h2>
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="Search with regex (e.g., /coffee/i)"
+                        aria-label="Search transactions">
+                    <label>
+                        <input type="checkbox" id="case-insensitive">
+                        Case insensitive
+                    </label>
+                </div>
+                <div class="table-container">
+                    <table id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="date">Date</th>
+                                <th data-sort="description">Description</th>
+                                <th data-sort="category">Category</th>
+                                <th data-sort="amount">Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="add" role="tabpanel" aria-labelledby="tab-add">
+            <div class="card">
+                <h2 id="form-title">Add Transaction</h2>
+                <form id="transaction-form" novalidate>
+                    <input type="hidden" id="edit-id">
+
+                    <div class="form-group">
+                        <label for="description">Description *</label>
+                        <input type="text" id="description" required>
+                        <div class="error-message" id="error-description"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">Amount ($) *</label>
+                        <input type="text" id="amount" required>
+                        <div class="error-message" id="error-amount"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Category *</label>
+                        <select id="category" required>
+                            <option value="">Select category</option>
+                        </select>
+                        <div class="error-message" id="error-category"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">Date *</label>
+                        <input type="text" id="date" placeholder="YYYY-MM-DD" required>
+                        <div class="error-message" id="error-date"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Transaction</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-edit"
+                        style="display:none;">Cancel</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="settings" role="tabpanel" aria-labelledby="tab-settings">
+            <div class="card">
+                <h2>Budget Settings</h2>
+                <form id="budget-form">
+                    <div class="form-group">
+                        <label for="monthly-budget">Monthly Budget ($)</label>
+                        <input type="number" id="monthly-budget" step="0.01" min="0">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Budget</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Currency Conversion</h2>
+                <div class="form-group">
+                    <label for="base-currency">Base Currency</label>
+                    <select id="base-currency">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rate-eur">EUR to USD Rate</label>
+                    <input type="number" id="rate-eur" step="0.0001" value="1.1">
+                </div>
+                <div class="form-group">
+                    <label for="rate-gbp">GBP to USD Rate</label>
+                    <input type="number" id="rate-gbp" step="0.0001" value="1.3">
+                </div>
+                <button type="button" class="btn btn-primary" id="save-rates">Save Rates</button>
+            </div>
+
+            <div class="card">
+                <h2>Categories</h2>
+                <div id="categories-list"></div>
+                <div class="form-group">
+                    <label for="new-category">Add New Category</label>
+                    <input type="text" id="new-category" placeholder="e.g., Books">
+                    <div class="error-message" id="error-new-category"></div>
+                </div>
+                <button type="button" class="btn btn-primary" id="add-category">Add Category</button>
+            </div>
+
+            <div class="card">
+                <h2>Data Management</h2>
+                <button type="button" class="btn btn-primary" id="export-json">Export JSON</button>
+                <button type="button" class="btn btn-primary" id="import-json">Import JSON</button>
+                <input type="file" id="file-input" accept=".json" style="display:none;">
+                <button type="button" class="btn btn-danger" id="clear-data">Clear All Data</button>
+            </div>
+        </section>
+
+        <section id="about" role="tabpanel" aria-labelledby="tab-about">
+            <div class="card">
+                <h2>About This App</h2>
+                <p>The Student Finance Tracker helps you manage your expenses efficiently with features like:</p>
+                <ul style="margin: 1rem 0; padding-left: 2rem;">
+                    <li>Track all your transactions with detailed categorization</li>
+                    <li>Set and monitor your monthly budgets</li>
+                    <li>Advanced regex-powered search functionality</li>
+                    <li>An Export and import data storage as JSON</li>
+                    <li>Multi-currency support with custom exchange rates</li>
+                    <li>Responsive design that works on all devices</li>
+                    <li>Fully accessible with keyboard navigation and screen reader support</li>
+                </ul>
+
+                <h3 style="margin-top: 2rem;">Contact</h3>
+                <div class="contact-links" style="justify-content: flex-start; margin-top: 1rem;">
+                    <a href="https://github.com/benjaminketteytagoe-alu" target="_blank">GitHub</a>
+                    <a href="mailto:b.kettey-ta@alustudent.com">Email</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="delete-modal" class="modal" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+        <div class="modal-content">
+            <h2 id="modal-title">Confirm Delete</h2>
+            <p>Are you sure you want to delete this transaction?</p>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button class="btn btn-danger" id="confirm-delete">Delete</button>
+                <button class="btn btn-secondary" id="cancel-delete">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div role="status" aria-live="polite" id="status-message"></div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Benjamin Kettey-Tagoe Student Finance Tracker. Built with precision, accessibility and usability in mind.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="scripts/storage.js"></script>
+    <script type="module" src="scripts/validators.js"></script>
+    <script type="module" src="scripts/search.js"></script>
+    <script type="module" src="scripts/state.js"></script>
+    <script type="module" src="scripts/ui.js"></script>
+    <script type="module">
+        import { State } from './scripts/state.js';
+        import { UI } from './scripts/ui.js';
+
+        State.init();
+        UI.init();
+        State.subscribe( () => UI.render() );
+        UI.render();
+    </script>
+</body>
+
+</html>

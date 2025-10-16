@@ -1,706 +1,317 @@
-/*UI Module Handles all user interface rendering and interactions*/
+// DOM manipulation and UI rendering
 
-import * as State from './state.js';
-import * as Validators from './validators.js';
-import * as Search from './search.js';
+import { state } from './state.js';
+import { filterTransactions, highlightMatches } from './search.js';
 
-// UI State
-let currentSort = { field: 'date', direction: 'desc' };
-let deleteCallback = null;
-
-/**
- * Initialize UI event listeners
- */
-const init = () =>
+// Navigation
+export const renderNavigation = () =>
 {
-    setupTabs();
-    setupForm();
-    setupTable();
-    setupSettings();
-    setupModals();
-    updateCategories();
-};
-
-/**
- * Setup tab navigation
- */
-const setupTabs = () =>
-{
-    const tabs = document.querySelectorAll( '.nav-tabs button' );
-
-    tabs.forEach( tab =>
+    const navLinks = document.querySelectorAll( '.nav-link' );
+    navLinks.forEach( link =>
     {
-        tab.addEventListener( 'click', () =>
-        {
-            // Update tab states
-            tabs.forEach( t =>
-            {
-                t.classList.remove( 'active' );
-                t.setAttribute( 'aria-selected', 'false' );
-            } );
-            tab.classList.add( 'active' );
-            tab.setAttribute( 'aria-selected', 'true' );
-
-            // Update section visibility
-            const sections = document.querySelectorAll( 'main section' );
-            sections.forEach( s => s.classList.remove( 'active' ) );
-
-            const targetId = tab.id.replace( 'tab-', '' );
-            const targetSection = document.getElementById( targetId );
-            if ( targetSection )
-            {
-                targetSection.classList.add( 'active' );
-            }
-        } );
-
-        // Keyboard navigation
-        tab.addEventListener( 'keydown', ( e ) =>
-        {
-            let newIndex;
-            const currentIndex = Array.from( tabs ).indexOf( tab );
-
-            if ( e.key === 'ArrowLeft' )
-            {
-                newIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
-                tabs[ newIndex ].focus();
-                tabs[ newIndex ].click();
-            } else if ( e.key === 'ArrowRight' )
-            {
-                newIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
-                tabs[ newIndex ].focus();
-                tabs[ newIndex ].click();
-            }
-        } );
+        link.classList.toggle( 'active', link.dataset.page === state.currentPage );
     } );
 };
 
-/**
- * Setup transaction form
- */
-const setupForm = () =>
+export const renderPage = () =>
 {
-    const form = document.getElementById( 'transaction-form' );
-    const dateInput = document.getElementById( 'date' );
-
-    // Set default date to today
-    dateInput.value = new Date().toISOString().split( 'T' )[ 0 ];
-
-    form.addEventListener( 'submit', ( e ) =>
+    const pages = document.querySelectorAll( '.page' );
+    pages.forEach( page =>
     {
-        e.preventDefault();
-
-        const description = document.getElementById( 'description' ).value;
-        const amount = document.getElementById( 'amount' ).value;
-        const category = document.getElementById( 'category' ).value;
-        const date = document.getElementById( 'date' ).value;
-        const editId = document.getElementById( 'edit-id' ).value;
-
-        let isValid = true;
-
-        // Validate all fields
-        [ 'description', 'amount', 'category', 'date' ].forEach( field =>
-        {
-            const value = document.getElementById( field ).value;
-            const validation = Validators.validate( field, value );
-            const errorEl = document.getElementById( `error-${ field }` );
-
-            if ( !validation.valid )
-            {
-                errorEl.textContent = validation.message;
-                errorEl.classList.add( 'show' );
-                isValid = false;
-            } else
-            {
-                errorEl.classList.remove( 'show' );
-            }
-        } );
-
-        if ( isValid )
-        {
-            const data = { description, amount, category, date };
-
-            if ( editId )
-            {
-                State.updateTransaction( editId, data );
-                showStatus( 'Transaction updated successfully' );
-                cancelEdit();
-            } else
-            {
-                State.addTransaction( data );
-                showStatus( 'Transaction added successfully' );
-                form.reset();
-                dateInput.value = new Date().toISOString().split( 'T' )[ 0 ];
-            }
-        }
+        page.classList.toggle( 'active', page.id === `${ state.currentPage }-page` );
     } );
-
-    // Real-time validation
-    [ 'description', 'amount', 'category', 'date' ].forEach( field =>
-    {
-        const input = document.getElementById( field );
-        input.addEventListener( 'blur', () =>
-        {
-            const validation = Validators.validate( field, input.value );
-            const errorEl = document.getElementById( `error-${ field }` );
-
-            if ( !validation.valid && input.value )
-            {
-                errorEl.textContent = validation.message;
-                errorEl.classList.add( 'show' );
-            } else
-            {
-                errorEl.classList.remove( 'show' );
-            }
-        } );
-    } );
-
-    document.getElementById( 'cancel-edit' ).addEventListener( 'click', cancelEdit );
+    renderNavigation();
 };
 
-/**
- * Cancel edit mode and reset form
- */
-const cancelEdit = () =>
+// Dashboard
+export const renderDashboard = () =>
 {
-    const form = document.getElementById( 'transaction-form' );
-    form.reset();
-    document.getElementById( 'edit-id' ).value = '';
-    document.getElementById( 'form-title' ).textContent = 'Add Transaction';
-    document.getElementById( 'cancel-edit' ).style.display = 'none';
-    document.getElementById( 'date' ).value = new Date().toISOString().split( 'T' )[ 0 ];
-
-    // Clear all error messages
-    document.querySelectorAll( '.error-message' ).forEach( el =>
-    {
-        el.classList.remove( 'show' );
-    } );
+    renderStats();
+    renderBudgetStatus();
+    renderCategoryBreakdown();
+    renderTrendChart();
 };
 
-/**
- * Setup table sorting and search
- */
-const setupTable = () =>
+const renderStats = () =>
 {
-    const searchInput = document.getElementById( 'search-input' );
-    const caseCheckbox = document.getElementById( 'case-insensitive' );
+    const container = document.getElementById( 'stats-grid' );
+    const totalSpent = state.getTotalSpent();
+    const monthSpent = state.getSpentThisMonth();
+    const totalTransactions = state.transactions.length;
+    const avgTransaction = totalTransactions > 0 ? totalSpent / totalTransactions : 0;
 
-    searchInput.addEventListener( 'input', renderTransactions );
-    caseCheckbox.addEventListener( 'change', renderTransactions );
-
-    // Setup sortable columns
-    document.querySelectorAll( 'th[data-sort]' ).forEach( th =>
-    {
-        th.addEventListener( 'click', () =>
-        {
-            const field = th.dataset.sort;
-
-            if ( currentSort.field === field )
-            {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else
-            {
-                currentSort.field = field;
-                currentSort.direction = 'asc';
-            }
-
-            // Update visual indicators
-            document.querySelectorAll( 'th[data-sort]' ).forEach( t =>
-            {
-                t.classList.remove( 'sort-asc', 'sort-desc' );
-            } );
-            th.classList.add( `sort-${ currentSort.direction }` );
-
-            renderTransactions();
-        } );
-
-        // Keyboard support
-        th.setAttribute( 'tabindex', '0' );
-        th.addEventListener( 'keydown', ( e ) =>
-        {
-            if ( e.key === 'Enter' || e.key === ' ' )
-            {
-                e.preventDefault();
-                th.click();
-            }
-        } );
-    } );
+    container.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Spent</div>
+      <div class="stat-value">$${ totalSpent.toFixed( 2 ) }</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">This Month</div>
+      <div class="stat-value">$${ monthSpent.toFixed( 2 ) }</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Transactions</div>
+      <div class="stat-value">${ totalTransactions }</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Average per Transaction</div>
+      <div class="stat-value">$${ avgTransaction.toFixed( 2 ) }</div>
+    </div>
+  `;
 };
 
-/**
- * Setup settings page
- */
-const setupSettings = () =>
+const renderBudgetStatus = () =>
 {
-    // Budget form
-    document.getElementById( 'budget-form' ).addEventListener( 'submit', ( e ) =>
-    {
-        e.preventDefault();
-        const budgetValue = document.getElementById( 'monthly-budget' ).value;
-        const validation = Validators.validateBudget( budgetValue );
+    const container = document.getElementById( 'budget-status' );
+    const status = state.getBudgetStatus();
 
-        if ( validation.valid )
-        {
-            State.setBudget( budgetValue );
-            showStatus( 'Budget saved successfully' );
-        } else
-        {
-            showStatus( validation.message );
-        }
-    } );
-
-    // Exchange rates
-    document.getElementById( 'save-rates' ).addEventListener( 'click', () =>
-    {
-        const rates = {
-            EUR: parseFloat( document.getElementById( 'rate-eur' ).value ),
-            GBP: parseFloat( document.getElementById( 'rate-gbp' ).value )
-        };
-        State.setRates( rates );
-        showStatus( 'Exchange rates saved' );
-    } );
-
-    // Base currency
-    document.getElementById( 'base-currency' ).addEventListener( 'change', ( e ) =>
-    {
-        State.setBaseCurrency( e.target.value );
-        showStatus( 'Base currency updated' );
-    } );
-
-    // Add category
-    document.getElementById( 'add-category' ).addEventListener( 'click', () =>
-    {
-        const input = document.getElementById( 'new-category' );
-        const value = input.value.trim();
-        const validation = Validators.validate( 'category', value );
-        const errorEl = document.getElementById( 'error-new-category' );
-
-        if ( !validation.valid )
-        {
-            errorEl.textContent = validation.message;
-            errorEl.classList.add( 'show' );
-        } else
-        {
-            if ( State.addCategory( value ) )
-            {
-                input.value = '';
-                errorEl.classList.remove( 'show' );
-                updateCategories();
-                showStatus( 'Category added successfully' );
-            } else
-            {
-                errorEl.textContent = 'Category already exists';
-                errorEl.classList.add( 'show' );
-            }
-        }
-    } );
-
-    // Data management
-    document.getElementById( 'export-json' ).addEventListener( 'click', exportJSON );
-    document.getElementById( 'import-json' ).addEventListener( 'click', () =>
-    {
-        document.getElementById( 'file-input' ).click();
-    } );
-    document.getElementById( 'file-input' ).addEventListener( 'change', importJSON );
-    document.getElementById( 'clear-data' ).addEventListener( 'click', () =>
-    {
-        if ( confirm( 'Are you sure you want to delete all transactions? This cannot be undone.' ) )
-        {
-            State.clearAll();
-            showStatus( 'All data cleared' );
-        }
-    } );
+    container.className = `budget-status ${ status.status }`;
+    container.innerHTML = `
+    <strong>Budget Status:</strong> ${ status.message }
+    <div style="margin-top: 0.5rem;">
+      <small>Spent: $${ status.spent.toFixed( 2 ) } / $${ state.settings.monthlyBudget.toFixed( 2 ) }</small>
+    </div>
+  `;
 };
 
-/**
- * Setup modal dialogs
- */
-const setupModals = () =>
+const renderCategoryBreakdown = () =>
 {
-    const modal = document.getElementById( 'delete-modal' );
+    const container = document.getElementById( 'category-breakdown' );
+    const spending = state.getSpendingByCategory();
+    const sorted = Object.entries( spending ).sort( ( a, b ) => b[ 1 ] - a[ 1 ] );
 
-    document.getElementById( 'cancel-delete' ).addEventListener( 'click', () =>
+    if ( sorted.length === 0 )
     {
-        modal.classList.remove( 'show' );
-    } );
-
-    document.getElementById( 'confirm-delete' ).addEventListener( 'click', () =>
-    {
-        if ( deleteCallback )
-        {
-            deleteCallback();
-        }
-        modal.classList.remove( 'show' );
-    } );
-
-    // Close modal on escape key
-    document.addEventListener( 'keydown', ( e ) =>
-    {
-        if ( e.key === 'Escape' && modal.classList.contains( 'show' ) )
-        {
-            modal.classList.remove( 'show' );
-        }
-    } );
-
-    // Close modal on backdrop click
-    modal.addEventListener( 'click', ( e ) =>
-    {
-        if ( e.target === modal )
-        {
-            modal.classList.remove( 'show' );
-        }
-    } );
-};
-
-/**
- * Show delete confirmation modal
- */
-const showDeleteModal = ( callback ) =>
-{
-    deleteCallback = callback;
-    document.getElementById( 'delete-modal' ).classList.add( 'show' );
-    document.getElementById( 'confirm-delete' ).focus();
-};
-
-/**
- * Show status message
- */
-const showStatus = ( message ) =>
-{
-    const statusEl = document.getElementById( 'status-message' );
-    statusEl.textContent = message;
-    statusEl.classList.add( 'show' );
-
-    setTimeout( () =>
-    {
-        statusEl.classList.remove( 'show' );
-    }, 3000 );
-};
-
-/**
- * Update categories in form and settings
- */
-const updateCategories = () =>
-{
-    const categories = State.getCategories();
-    const select = document.getElementById( 'category' );
-    const listEl = document.getElementById( 'categories-list' );
-
-    // Update form dropdown
-    select.innerHTML = '<option value="">Select category</option>';
-    categories.forEach( cat =>
-    {
-        const option = document.createElement( 'option' );
-        option.value = cat;
-        option.textContent = cat;
-        select.appendChild( option );
-    } );
-
-    // Update settings list
-    listEl.innerHTML = categories.map( cat => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--border);">
-            <span class="category-badge" style="background: hsl(${ hashCode( cat ) % 360 }, 70%, 85%);">${ cat }</span>
-            ${ cat !== 'Other' ? `<button class="icon-btn delete" data-category="${ cat }" aria-label="Delete ${ cat } category">✕</button>` : '' }
-        </div>
-    `).join( '' );
-
-    // Add delete handlers
-    listEl.querySelectorAll( '.icon-btn.delete' ).forEach( btn =>
-    {
-        btn.addEventListener( 'click', () =>
-        {
-            const categoryName = btn.dataset.category;
-            if ( confirm( `Delete category "${ categoryName }"? Transactions in this category will be moved to "Other".` ) )
-            {
-                State.deleteCategory( categoryName );
-                updateCategories();
-                showStatus( `Category "${ categoryName }" deleted` );
-            }
-        } );
-    } );
-};
-
-/**
- * Render transactions table
- */
-const renderTransactions = () =>
-{
-    const tbody = document.getElementById( 'transactions-body' );
-    const searchInput = document.getElementById( 'search-input' ).value;
-    const caseInsensitive = document.getElementById( 'case-insensitive' ).checked;
-
-    let transactions = State.getTransactions();
-
-    // Apply search filter
-    transactions = Search.searchTransactions( transactions, searchInput, caseInsensitive );
-
-    // Apply sorting
-    transactions = sortTransactions( transactions );
-
-    if ( transactions.length === 0 )
-    {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No transactions found</td></tr>';
+        container.innerHTML = '<p>No transactions yet.</p>';
         return;
     }
 
-    tbody.innerHTML = transactions.map( t => `
-        <tr>
-            <td>${ t.date }</td>
-            <td>${ Search.highlightMatches( t.description, searchInput, caseInsensitive ) }</td>
-            <td>
-                <span class="category-badge" style="background: hsl(${ hashCode( t.category ) % 360 }, 70%, 85%);">
-                    ${ Search.highlightMatches( t.category, searchInput, caseInsensitive ) }
-                </span>
-            </td>
-            <td>${ t.amount.toFixed( 2 ) }</td>
-            <td class="actions">
-                <button class="icon-btn" data-id="${ t.id }" data-action="edit" aria-label="Edit transaction">✏️</button>
-                <button class="icon-btn delete" data-id="${ t.id }" data-action="delete" aria-label="Delete transaction">🗑️</button>
-            </td>
-        </tr>
-    `).join( '' );
-
-    // Add event listeners to action buttons
-    tbody.querySelectorAll( '.icon-btn' ).forEach( btn =>
-    {
-        btn.addEventListener( 'click', () =>
-        {
-            const id = btn.dataset.id;
-            const action = btn.dataset.action;
-
-            if ( action === 'edit' )
-            {
-                editTransaction( id );
-            } else if ( action === 'delete' )
-            {
-                showDeleteModal( () =>
-                {
-                    State.deleteTransaction( id );
-                    showStatus( 'Transaction deleted' );
-                } );
-            }
-        } );
-    } );
+    container.innerHTML = sorted.map( ( [ category, amount ] ) => `
+    <div class="category-item">
+      <span>${ category }</span>
+      <strong>$${ amount.toFixed( 2 ) }</strong>
+    </div>
+  `).join( '' );
 };
 
-/**
- * Sort transactions
- */
-const sortTransactions = ( transactions ) =>
+const renderTrendChart = () =>
 {
-    return [ ...transactions ].sort( ( a, b ) =>
+    const container = document.getElementById( 'trend-chart' );
+    const trend = state.getLast7DaysTrend();
+    const maxAmount = Math.max( ...trend.map( d => d.amount ), 1 );
+
+    container.innerHTML = trend.map( day =>
     {
-        let aVal = a[ currentSort.field ];
-        let bVal = b[ currentSort.field ];
+        const percentage = ( day.amount / maxAmount ) * 100;
+        const date = new Date( day.date );
+        const label = date.toLocaleDateString( 'en-US', { weekday: 'short' } );
 
-        if ( currentSort.field === 'amount' )
-        {
-            aVal = parseFloat( aVal );
-            bVal = parseFloat( bVal );
-        } else if ( currentSort.field === 'description' || currentSort.field === 'category' )
-        {
-            aVal = aVal.toLowerCase();
-            bVal = bVal.toLowerCase();
-        }
-
-        if ( aVal < bVal ) return currentSort.direction === 'asc' ? -1 : 1;
-        if ( aVal > bVal ) return currentSort.direction === 'asc' ? 1 : -1;
-        return 0;
-    } );
-};
-
-/**
- * Edit transaction
- */
-const editTransaction = ( id ) =>
-{
-    const transaction = State.getTransactionById( id );
-
-    if ( transaction )
-    {
-        document.getElementById( 'edit-id' ).value = transaction.id;
-        document.getElementById( 'description' ).value = transaction.description;
-        document.getElementById( 'amount' ).value = transaction.amount;
-        document.getElementById( 'category' ).value = transaction.category;
-        document.getElementById( 'date' ).value = transaction.date;
-        document.getElementById( 'form-title' ).textContent = 'Edit Transaction';
-        document.getElementById( 'cancel-edit' ).style.display = 'inline-flex';
-
-        // Switch to add transaction tab
-        document.getElementById( 'tab-add' ).click();
-
-        // Focus on description field
-        document.getElementById( 'description' ).focus();
-    }
-};
-
-/**
- * Render dashboard
- */
-const renderDashboard = () =>
-{
-    const stats = State.getStats();
-    const budget = State.getBudget();
-    const transactions = State.getTransactions();
-
-    // Update stat cards
-    document.getElementById( 'stat-total' ).textContent = stats.total;
-    document.getElementById( 'stat-spent' ).textContent = `${ stats.spent.toFixed( 2 ) }`;
-    document.getElementById( 'stat-top-category' ).textContent =
-        stats.topCategory ? stats.topCategory.name : '—';
-    document.getElementById( 'stat-week' ).textContent = `${ stats.weekSpent.toFixed( 2 ) }`;
-
-    // Update budget overview
-    const budgetOverview = document.getElementById( 'budget-overview' );
-    const remaining = stats.remaining;
-    const percentage = Math.min( stats.percentageUsed, 100 );
-
-    let statusClass = '';
-    let statusText = '';
-    let liveRegion = 'polite';
-
-    if ( stats.spent > budget )
-    {
-        statusClass = 'danger';
-        statusText = `Over budget by ${ Math.abs( remaining ).toFixed( 2 ) }`;
-        liveRegion = 'assertive';
-    } else if ( percentage >= 80 )
-    {
-        statusClass = 'warning';
-        statusText = `${ remaining.toFixed( 2 ) } remaining`;
-    } else
-    {
-        statusClass = '';
-        statusText = `${ remaining.toFixed( 2 ) } remaining`;
-    }
-
-    budgetOverview.setAttribute( 'aria-live', liveRegion );
-    budgetOverview.innerHTML = `
-        <p style="margin-bottom: 0.5rem;">
-            Monthly Budget: ${ budget.toFixed( 2 ) } | Spent: ${ stats.spent.toFixed( 2 ) }
-        </p>
-        <div class="progress-bar">
-            <div class="progress-fill ${ statusClass }" style="width: ${ percentage }%;">
-                ${ percentage.toFixed( 0 ) }%
-            </div>
-        </div>
-        <p style="margin-top: 0.5rem; font-weight: 500;">${ statusText }</p>
+        return `
+      <div class="trend-bar">
+        <span class="trend-label">${ label }</span>
+        <div class="trend-bar-fill" style="width: ${ percentage }%"></div>
+        <span style="margin-left: 0.5rem; font-size: 0.875rem;">$${ day.amount.toFixed( 2 ) }</span>
+      </div>
     `;
+    } ).join( '' );
+};
 
-    // Update recent transactions
-    const recentEl = document.getElementById( 'recent-transactions' );
-    const recent = transactions.slice( -5 ).reverse();
+// Records
+export const renderRecords = ( searchPattern = '', caseSensitive = false ) =>
+{
+    const container = document.getElementById( 'records-container' );
+    const sortBy = document.getElementById( 'sort-by' ).value;
 
-    if ( recent.length === 0 )
+    let transactions = [ ...state.transactions ];
+
+    // Apply search filter
+    if ( searchPattern )
     {
-        recentEl.innerHTML = '<p class="empty-state">No transactions yet. Add your first transaction to get started!</p>';
+        transactions = filterTransactions( transactions, searchPattern, caseSensitive );
+    }
+
+    // Apply sorting
+    transactions = sortTransactions( transactions, sortBy );
+
+    if ( transactions.length === 0 )
+    {
+        container.innerHTML = '<p style="text-align: center; padding: 2rem;">No transactions found.</p>';
+        return;
+    }
+
+    // Desktop table view
+    const tableHTML = `
+    <div class="records-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ transactions.map( t => `
+            <tr>
+              <td>${ t.date }</td>
+              <td>${ searchPattern ? highlightMatches( t.description, searchPattern, caseSensitive ) : t.description }</td>
+              <td>${ searchPattern ? highlightMatches( t.category, searchPattern, caseSensitive ) : t.category }</td>
+              <td>$${ t.amount.toFixed( 2 ) }</td>
+              <td>
+                <div class="record-actions">
+                  <button class="btn btn-small btn-secondary" data-edit="${ t.id }">Edit</button>
+                  <button class="btn btn-small btn-danger" data-delete="${ t.id }">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `).join( '' ) }
+        </tbody>
+      </table>
+    </div>
+  `;
+
+    // Mobile card view
+    const cardsHTML = `
+    <div class="records-cards">
+      ${ transactions.map( t => `
+        <div class="record-card">
+          <div class="record-card-header">
+            <div class="record-card-title">${ searchPattern ? highlightMatches( t.description, searchPattern, caseSensitive ) : t.description }</div>
+            <div class="record-actions">
+              <button class="btn btn-small btn-secondary" data-edit="${ t.id }">Edit</button>
+              <button class="btn btn-small btn-danger" data-delete="${ t.id }">Delete</button>
+            </div>
+          </div>
+          <div class="record-card-body">
+            <div class="record-card-field">
+              <span class="record-card-label">Date:</span>
+              <span>${ t.date }</span>
+            </div>
+            <div class="record-card-field">
+              <span class="record-card-label">Category:</span>
+              <span>${ searchPattern ? highlightMatches( t.category, searchPattern, caseSensitive ) : t.category }</span>
+            </div>
+            <div class="record-card-field">
+              <span class="record-card-label">Amount:</span>
+              <strong>$${ t.amount.toFixed( 2 ) }</strong>
+            </div>
+          </div>
+        </div>
+      `).join( '' ) }
+    </div>
+  `;
+
+    container.innerHTML = tableHTML + cardsHTML;
+};
+
+const sortTransactions = ( transactions, sortBy ) =>
+{
+    const sorted = [ ...transactions ];
+
+    switch ( sortBy )
+    {
+        case 'date-desc':
+            return sorted.sort( ( a, b ) => new Date( b.date ) - new Date( a.date ) );
+        case 'date-asc':
+            return sorted.sort( ( a, b ) => new Date( a.date ) - new Date( b.date ) );
+        case 'amount-desc':
+            return sorted.sort( ( a, b ) => b.amount - a.amount );
+        case 'amount-asc':
+            return sorted.sort( ( a, b ) => a.amount - b.amount );
+        case 'description-asc':
+            return sorted.sort( ( a, b ) => a.description.localeCompare( b.description ) );
+        case 'description-desc':
+            return sorted.sort( ( a, b ) => b.description.localeCompare( a.description ) );
+        default:
+            return sorted;
+    }
+};
+
+// Form
+export const renderForm = () =>
+{
+    const categorySelect = document.getElementById( 'category' );
+    categorySelect.innerHTML = '<option value="">Select category...</option>' +
+        state.settings.categories.map( cat => `<option value="${ cat }">${ cat }</option>` ).join( '' );
+
+    if ( state.editingId )
+    {
+        const transaction = state.getTransaction( state.editingId );
+        if ( transaction )
+        {
+            document.getElementById( 'form-title' ).textContent = 'Edit Transaction';
+            document.getElementById( 'edit-id' ).value = transaction.id;
+            document.getElementById( 'description' ).value = transaction.description;
+            document.getElementById( 'amount' ).value = transaction.amount;
+            document.getElementById( 'category' ).value = transaction.category;
+            document.getElementById( 'date' ).value = transaction.date;
+            document.getElementById( 'cancel-edit' ).style.display = 'inline-block';
+        }
     } else
     {
-        recentEl.innerHTML = recent.map( t => `
-            <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border);">
-                <div>
-                    <strong>${ t.description }</strong>
-                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                        ${ t.date } • ${ t.category }
-                    </div>
-                </div>
-                <div style="font-weight: 600; color: var(--primary);">
-                    ${ t.amount.toFixed( 2 ) }
-                </div>
-            </div>
-        `).join( '' );
+        document.getElementById( 'form-title' ).textContent = 'Add Transaction';
+        document.getElementById( 'edit-id' ).value = '';
+        document.getElementById( 'cancel-edit' ).style.display = 'none';
     }
-
-    // Update settings values
-    document.getElementById( 'monthly-budget' ).value = budget;
-
-    const rates = State.getRates();
-    document.getElementById( 'rate-eur' ).value = rates.EUR;
-    document.getElementById( 'rate-gbp' ).value = rates.GBP;
-    document.getElementById( 'base-currency' ).value = State.getBaseCurrency();
 };
 
-/**
- * Export data as JSON
- */
-const exportJSON = () =>
+export const clearForm = () =>
 {
-    const transactions = State.getTransactions();
-    const dataStr = JSON.stringify( transactions, null, 2 );
-    const blob = new Blob( [ dataStr ], { type: 'application/json' } );
-    const url = URL.createObjectURL( blob );
-    const a = document.createElement( 'a' );
-    a.href = url;
-    a.download = `finance-tracker-${ new Date().toISOString().split( 'T' )[ 0 ] }.json`;
-    a.click();
-    URL.revokeObjectURL( url );
-    showStatus( 'Data exported successfully' );
+    document.getElementById( 'transaction-form' ).reset();
+    state.editingId = null;
+    clearFormErrors();
 };
 
-/**
- * Import data from JSON file
- */
-const importJSON = ( e ) =>
+export const clearFormErrors = () =>
 {
-    const file = e.target.files[ 0 ];
-    if ( !file ) return;
-
-    const reader = new FileReader();
-    reader.onload = ( event ) =>
+    document.querySelectorAll( '.error-message' ).forEach( el => el.textContent = '' );
+    document.querySelectorAll( 'input, select' ).forEach( el =>
     {
-        try
-        {
-            const data = JSON.parse( event.target.result );
-            const validation = Validators.validateJSON( data );
-
-            if ( !validation.valid )
-            {
-                alert( 'Invalid JSON: ' + validation.message );
-                return;
-            }
-
-            if ( confirm( 'This will replace all existing transactions. Continue?' ) )
-            {
-                State.importData( data );
-                showStatus( 'Data imported successfully' );
-            }
-        } catch ( error )
-        {
-            alert( 'Error parsing JSON file: ' + error.message );
-        }
-
-        // Reset file input
-        e.target.value = '';
-    };
-
-    reader.onerror = () =>
-    {
-        alert( 'Error reading file' );
-        e.target.value = '';
-    };
-
-    reader.readAsText( file );
+        el.style.borderColor = '';
+    } );
 };
 
-/**
- * Generate hash code for string (for color generation)
- */
-const hashCode = ( str ) =>
+// Settings
+export const renderSettings = () =>
 {
-    let hash = 0;
-    for ( let i = 0; i < str.length; i++ )
-    {
-        hash = str.charCodeAt( i ) + ( ( hash << 5 ) - hash );
-    }
-    return Math.abs( hash );
+    document.getElementById( 'monthly-budget' ).value = state.settings.monthlyBudget;
+    document.getElementById( 'base-currency' ).value = state.settings.baseCurrency;
+
+    renderCurrencyRates();
+    renderCategories();
 };
 
-/**
- * Main render function
- */
-const render = () =>
+const renderCurrencyRates = () =>
 {
-    renderDashboard();
-    renderTransactions();
+    const container = document.getElementById( 'currency-rates' );
+    const currencies = Object.entries( state.settings.currencies );
+
+    container.innerHTML = `
+    <div style="margin-top: 1rem;">
+      ${ currencies.map( ( [ code, rate ] ) => `
+        <div class="form-group">
+          <label for="rate-${ code }">${ code } Rate:</label>
+          <input type="number" id="rate-${ code }" value="${ rate }" step="0.01" min="0">
+        </div>
+      `).join( '' ) }
+    </div>
+  `;
 };
 
-export { init, render };
+const renderCategories = () =>
+{
+    const container = document.getElementById( 'categories-list' );
+
+    container.innerHTML = `
+    <div class="categories-list">
+      ${ state.settings.categories.map( cat => `
+        <span class="category-badge">
+          ${ cat }
+          <button data-remove-category="${ cat }" aria-label="Remove ${ cat }">×</button>
+        </span>
+      `).join( '' ) }
+    </div>
+  `;
+};

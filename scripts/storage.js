@@ -1,89 +1,110 @@
-/**
- * Storage Module
- * Handles all localStorage operations with error handling
- */
+// Storage utilities for localStorage management
 
-const KEYS = {
-    TRANSACTIONS: 'sft_transactions',
-    CATEGORIES: 'sft_categories',
-    BUDGET: 'sft_budget',
-    RATES: 'sft_rates',
-    SETTINGS: 'sft_settings'
+const STORAGE_KEYS = {
+    TRANSACTIONS: 'finance_tracker_transactions',
+    SETTINGS: 'finance_tracker_settings',
+    BUDGETS: 'finance_tracker_budgets',
 };
 
-/**
- * Get data from localStorage
- * @param {string} key - Storage key
- * @returns {any|null} Parsed data or null if error/not found
- */
-const get = ( key ) =>
+const DEFAULT_SETTINGS = {
+    baseCurrency: 'USD',
+    currencies: {
+        USD: 1,
+        EUR: 0.92,
+        GBP: 0.79,
+    },
+    categories: [ 'Food', 'Books', 'Transport', 'Entertainment', 'Fees', 'Other' ],
+    monthlyBudget: 1000,
+};
+
+export const saveTransactions = ( transactions ) =>
 {
     try
     {
-        const data = window.localStorage.getItem( key );
-        return data ? JSON.parse( data ) : null;
+        localStorage.setItem( STORAGE_KEYS.TRANSACTIONS, JSON.stringify( transactions ) );
     } catch ( error )
     {
-        console.error( `Error reading from storage [${ key }]:`, error );
-        return null;
+        console.error( 'Failed to save transactions:', error );
+        throw new Error( 'Failed to save data. Storage may be full.' );
     }
 };
 
-/**
- * Save data to localStorage
- * @param {string} key - Storage key
- * @param {any} value - Data to store
- * @returns {boolean} Success status
- */
-const set = ( key, value ) =>
+export const loadTransactions = () =>
 {
     try
     {
-        window.localStorage.setItem( key, JSON.stringify( value ) );
-        return true;
+        const data = localStorage.getItem( STORAGE_KEYS.TRANSACTIONS );
+        return data ? JSON.parse( data ) : [];
     } catch ( error )
     {
-        console.error( `Error writing to storage [${ key }]:`, error );
-        return false;
+        console.error( 'Failed to load transactions:', error );
+        return [];
     }
 };
 
-/**
- * Remove data from localStorage
- * @param {string} key - Storage key
- * @returns {boolean} Success status
- */
-const remove = ( key ) =>
+export const saveSettings = ( settings ) =>
 {
     try
     {
-        window.localStorage.removeItem( key );
-        return true;
+        localStorage.setItem( STORAGE_KEYS.SETTINGS, JSON.stringify( settings ) );
     } catch ( error )
     {
-        console.error( `Error removing from storage [${ key }]:`, error );
-        return false;
+        console.error( 'Failed to save settings:', error );
+        throw new Error( 'Failed to save settings.' );
     }
 };
 
-/**
- * Clear all app data from localStorage
- * @returns {boolean} Success status
- */
-const clearAll = () =>
+export const loadSettings = () =>
 {
     try
     {
-        Object.values( KEYS ).forEach( key =>
+        const data = localStorage.getItem( STORAGE_KEYS.SETTINGS );
+        return data ? { ...DEFAULT_SETTINGS, ...JSON.parse( data ) } : DEFAULT_SETTINGS;
+    } catch ( error )
+    {
+        console.error( 'Failed to load settings:', error );
+        return DEFAULT_SETTINGS;
+    }
+};
+
+export const exportData = () =>
+{
+    const data = {
+        transactions: loadTransactions(),
+        settings: loadSettings(),
+        exportedAt: new Date().toISOString(),
+    };
+    return JSON.stringify( data, null, 2 );
+};
+
+export const importData = ( jsonString ) =>
+{
+    try
+    {
+        const data = JSON.parse( jsonString );
+
+        // Validate structure
+        if ( !data.transactions || !Array.isArray( data.transactions ) )
         {
-            window.localStorage.removeItem( key );
-        } );
-        return true;
+            return { success: false, message: 'Invalid data format: transactions must be an array' };
+        }
+
+        // Validate each transaction
+        for ( const transaction of data.transactions )
+        {
+            if ( !transaction.id || !transaction.description || typeof transaction.amount !== 'number' )
+            {
+                return { success: false, message: 'Invalid transaction format' };
+            }
+        }
+
+        // Import data
+        saveTransactions( data.transactions );
+        if ( data.settings ) saveSettings( data.settings );
+
+        return { success: true, message: 'Data imported successfully' };
     } catch ( error )
     {
-        console.error( 'Error clearing all storage:', error );
-        return false;
+        return { success: false, message: 'Invalid JSON format' };
     }
 };
-
-export { KEYS, get, set, remove, clearAll };

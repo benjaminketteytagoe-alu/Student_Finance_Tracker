@@ -4,445 +4,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tests - Student Finance Tracker</title>
+    <title>Finance Tracker Tests</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: #f8fafc;
-        }
-
-        h1 {
-            color: #2563eb;
+            font-family: Arial, sans-serif;
+            margin: 2rem;
         }
 
         .test-section {
-            background: white;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .test-case {
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            border-left: 4px solid #e2e8f0;
-            background: #f8fafc;
-        }
-
-        .test-case.pass {
-            border-left-color: #10b981;
-            background: #d1fae5;
-        }
-
-        .test-case.fail {
-            border-left-color: #ef4444;
-            background: #fee2e2;
-        }
-
-        .test-case h4 {
-            margin: 0 0 0.5rem 0;
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid #ccc;
         }
 
         .test-result {
-            font-size: 0.875rem;
-            color: #64748b;
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+        }
+
+        .pass {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .fail {
+            background: #f8d7da;
+            color: #721c24;
         }
 
         button {
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-right: 0.5rem;
-        }
-
-        button:hover {
-            background: #1e40af;
-        }
-
-        pre {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 1rem;
-            border-radius: 6px;
-            overflow-x: auto;
-        }
-
-        .stats {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .stat-box {
-            padding: 1rem;
-            border-radius: 6px;
-            flex: 1;
-        }
-
-        .stat-box.total {
-            background: #dbeafe;
-        }
-
-        .stat-box.pass {
-            background: #d1fae5;
-        }
-
-        .stat-box.fail {
-            background: #fee2e2;
+            margin: 0.5rem;
+            padding: 0.5rem 1rem;
         }
     </style>
 </head>
 
 <body>
-    <h1> Bs Student Finance Tracker - Test Suite</h1>
+    <h1>Finance Tracker Validation Tests</h1>
 
     <div class="test-section">
-        <h2>Test Controls</h2>
-        <button onclick="runAllTests()">Run All Tests</button>
-        <button onclick="clearTests()">Clear Results</button>
-        <button onclick="location.href='index.html'">Back to App</button>
-    </div>
+        <h2>Regex Pattern Tests</h2>
 
-    <div class="stats" id="stats" style="display: none;">
-        <div class="stat-box total">
-            <strong>Total Tests</strong>
-            <div id="stat-total">0</div>
+        <div class="test-result" id="description-test">
+            <h3>Description Validation</h3>
+            <button onclick="testDescription()">Run Description Tests</button>
         </div>
-        <div class="stat-box pass">
-            <strong>Passed</strong>
-            <div id="stat-pass">0</div>
+
+        <div class="test-result" id="amount-test">
+            <h3>Amount Validation</h3>
+            <button onclick="testAmount()">Run Amount Tests</button>
         </div>
-        <div class="stat-box fail">
-            <strong>Failed</strong>
-            <div id="stat-fail">0</div>
+
+        <div class="test-result" id="date-test">
+            <h3>Date Validation</h3>
+            <button onclick="testDate()">Run Date Tests</button>
+        </div>
+
+        <div class="test-result" id="category-test">
+            <h3>Category Validation</h3>
+            <button onclick="testCategory()">Run Category Tests</button>
+        </div>
+
+        <div class="test-result" id="search-test">
+            <h3>Search Regex Tests</h3>
+            <button onclick="testSearch()">Run Search Tests</button>
         </div>
     </div>
-
-    <div id="test-results"></div>
 
     <script type="module">
-        import * as Validators from './scripts/validators.js';
-        import * as Search from './scripts/search.js';
-        import * as Storage from './scripts/storage.js';
+        import { validateDescription, validateAmount, validateDate, validateCategory, PATTERNS } from './scripts/validators.js';
+        import { compileRegex, safeSearch } from './scripts/search.js';
 
-        let testResults = [];
-
-        window.runAllTests = () =>
+        window.testDescription = function ()
         {
-            testResults = [];
-            document.getElementById( 'stats' ).style.display = 'flex';
+            const tests = [
+                { input: 'Lunch', expected: true },
+                { input: ' Lunch', expected: false },
+                { input: 'Lunch ', expected: false },
+                { input: 'Lunch  dinner', expected: false },
+                { input: 'Coffee coffee', expected: false },
+                { input: 'A', expected: true },
+                { input: '', expected: false }
+            ];
 
-            testValidators();
-            testSearch();
-            testStorage();
-
-            displayResults();
+            runTests( 'description-test', tests, validateDescription );
         };
 
-        window.clearTests = () =>
+        window.testAmount = function ()
         {
-            document.getElementById( 'test-results' ).innerHTML = '';
-            document.getElementById( 'stats' ).style.display = 'none';
-            testResults = [];
+            const tests = [
+                { input: '12.50', expected: true },
+                { input: '12.5', expected: true },
+                { input: '12.505', expected: false },
+                { input: '0', expected: true },
+                { input: '012', expected: false },
+                { input: '-5', expected: false },
+                { input: 'abc', expected: false }
+            ];
+
+            runTests( 'amount-test', tests, validateAmount );
         };
 
-        function testValidators ()
+        window.testDate = function ()
         {
-            const section = { name: 'Validators', tests: [] };
-
-            // Test description validation
-            section.tests.push( {
-                name: 'Description - Valid input',
-                result: Validators.validate( 'description', 'Lunch at cafeteria' ),
-                expected: { valid: true },
-                pass: Validators.validate( 'description', 'Lunch at cafeteria' ).valid === true
-            } );
-
-            section.tests.push( {
-                name: 'Description - Leading spaces (should fail)',
-                result: Validators.validate( 'description', '  Lunch' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'description', '  Lunch' ).valid === false
-            } );
-
-            section.tests.push( {
-                name: 'Description - Trailing spaces (should fail)',
-                result: Validators.validate( 'description', 'Lunch  ' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'description', 'Lunch  ' ).valid === false
-            } );
-
-            section.tests.push( {
-                name: 'Description - Duplicate words (should fail)',
-                result: Validators.validate( 'description', 'Coffee coffee today' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'description', 'Coffee coffee today' ).valid === false
-            } );
-
-            // Test amount validation
-            section.tests.push( {
-                name: 'Amount - Valid decimal',
-                result: Validators.validate( 'amount', '12.50' ),
-                expected: { valid: true },
-                pass: Validators.validate( 'amount', '12.50' ).valid === true
-            } );
-
-            section.tests.push( {
-                name: 'Amount - Valid integer',
-                result: Validators.validate( 'amount', '45' ),
-                expected: { valid: true },
-                pass: Validators.validate( 'amount', '45' ).valid === true
-            } );
-
-            section.tests.push( {
-                name: 'Amount - Invalid format (should fail)',
-                result: Validators.validate( 'amount', '12.5.3' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'amount', '12.5.3' ).valid === false
-            } );
-
-            section.tests.push( {
-                name: 'Amount - Too many decimals (should fail)',
-                result: Validators.validate( 'amount', '12.567' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'amount', '12.567' ).valid === false
-            } );
-
-            // Test date validation
-            section.tests.push( {
-                name: 'Date - Valid format',
-                result: Validators.validate( 'date', '2025-09-25' ),
-                expected: { valid: true },
-                pass: Validators.validate( 'date', '2025-09-25' ).valid === true
-            } );
-
-            section.tests.push( {
-                name: 'Date - Invalid format (should fail)',
-                result: Validators.validate( 'date', '25-09-2025' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'date', '25-09-2025' ).valid === false
-            } );
-
-            section.tests.push( {
-                name: 'Date - Invalid date (should fail)',
-                result: Validators.validate( 'date', '2025-13-45' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'date', '2025-13-45' ).valid === false
-            } );
-
-            // Test category validation
-            section.tests.push( {
-                name: 'Category - Valid single word',
-                result: Validators.validate( 'category', 'Food' ),
-                expected: { valid: true },
-                pass: Validators.validate( 'category', 'Food' ).valid === true
-            } );
-
-            section.tests.push( {
-                name: 'Category - Valid with hyphen',
-                result: Validators.validate( 'category', 'Food-Drinks' ),
-                expected: { valid: true },
-                pass: Validators.validate( 'category', 'Food-Drinks' ).valid === true
-            } );
-
-            section.tests.push( {
-                name: 'Category - Invalid with numbers (should fail)',
-                result: Validators.validate( 'category', 'Food123' ),
-                expected: { valid: false },
-                pass: Validators.validate( 'category', 'Food123' ).valid === false
-            } );
-
-            // Test JSON validation
-            const validJSON = [
-                { id: 'txn_1', description: 'Test', amount: 10, category: 'Food', date: '2025-09-25' }
+            const tests = [
+                { input: '2025-09-25', expected: true },
+                { input: '2025-13-01', expected: false },
+                { input: '2025-09-32', expected: false },
+                { input: '25-09-25', expected: false },
+                { input: '2025/09/25', expected: false },
+                { input: '2025-02-29', expected: true },
+                { input: '2026-02-29', expected: false }
             ];
-            section.tests.push( {
-                name: 'JSON - Valid structure',
-                result: Validators.validateJSON( validJSON ),
-                expected: { valid: true },
-                pass: Validators.validateJSON( validJSON ).valid === true
-            } );
 
-            const invalidJSON = [
-                { id: 'txn_1', description: 'Test' } // Missing fields
-            ];
-            section.tests.push( {
-                name: 'JSON - Missing fields (should fail)',
-                result: Validators.validateJSON( invalidJSON ),
-                expected: { valid: false },
-                pass: Validators.validateJSON( invalidJSON ).valid === false
-            } );
+            runTests( 'date-test', tests, validateDate );
+        };
 
-            testResults.push( section );
-        }
-
-        function testSearch ()
+        window.testCategory = function ()
         {
-            const section = { name: 'Search & Regex', tests: [] };
+            const tests = [
+                { input: 'Food', expected: true },
+                { input: 'Student Fees', expected: true },
+                { input: 'Food-Drink', expected: true },
+                { input: 'Food123', expected: false },
+                { input: 'Food!', expected: false },
+                { input: '', expected: false }
+            ];
 
+            runTests( 'category-test', tests, validateCategory );
+        };
+
+        window.testSearch = function ()
+        {
             const testData = [
-                { id: 1, description: 'Coffee break', category: 'Food', amount: 5.50, date: '2025-09-25' },
-                { id: 2, description: 'Tea time', category: 'Food', amount: 3.25, date: '2025-09-26' },
-                { id: 3, description: 'Lunch special', category: 'Food', amount: 12.00, date: '2025-09-27' }
+                { id: '1', description: 'Coffee with friends', amount: 8.75, category: 'Food', date: '2025-09-28' },
+                { id: '2', description: 'Chemistry textbook', amount: 89.99, category: 'Books', date: '2025-09-23' },
+                { id: '3', description: 'Coffee coffee duplicate', amount: 5.00, category: 'Food', date: '2025-09-29' }
             ];
 
-            // Test basic search
-            let result = Search.searchTransactions( testData, 'coffee', true );
-            section.tests.push( {
-                name: 'Search - Case insensitive',
-                result: result.length,
-                expected: 1,
-                pass: result.length === 1
-            } );
+            const tests = [
+                { pattern: 'coffee', expected: 2 },
+                { pattern: '/coffee/i', expected: 2 },
+                { pattern: '/\\d+\\.\\d{2}\\b/', expected: 3 },
+                { pattern: '/\\b(\\w+)\\s+\\1\\b/', expected: 1 },
+                { pattern: '/textbook/', expected: 1 },
+                { pattern: '/[', expected: 'error' }
+            ];
 
-            // Test regex search
-            result = Search.searchTransactions( testData, '/(coffee|tea)/i', false );
-            section.tests.push( {
-                name: 'Search - Regex pattern (coffee OR tea)',
-                result: result.length,
-                expected: 2,
-                pass: result.length === 2
-            } );
+            const container = document.getElementById( 'search-test' );
+            container.innerHTML = '<h3>Search Regex Tests</h3><button onclick="testSearch()">Run Search Tests</button>';
 
-            // Test lookahead pattern for cents
-            result = Search.searchTransactions( testData, '/\\.\\d{2}\\b/', false );
-            section.tests.push( {
-                name: 'Search - Advanced regex (cents pattern)',
-                result: result.length,
-                expected: 2,
-                pass: result.length === 2
-            } );
-
-            // Test highlight matches
-            const highlighted = Search.highlightMatches( 'Coffee break', 'coffee', true );
-            section.tests.push( {
-                name: 'Highlight - Case insensitive match',
-                result: highlighted.includes( '<mark>' ),
-                expected: true,
-                pass: highlighted.includes( '<mark>' )
-            } );
-
-            // Test pattern validation
-            const validPattern = Search.testPattern( '/coffee/i' );
-            section.tests.push( {
-                name: 'Pattern validation - Valid regex',
-                result: validPattern.valid,
-                expected: true,
-                pass: validPattern.valid === true
-            } );
-
-            const invalidPattern = Search.testPattern( '/[/' );
-            section.tests.push( {
-                name: 'Pattern validation - Invalid regex',
-                result: invalidPattern.valid,
-                expected: false,
-                pass: invalidPattern.valid === false
-            } );
-
-            testResults.push( section );
-        }
-
-        function testStorage ()
-        {
-            const section = { name: 'Storage', tests: [] };
-
-            // Test set and get
-            const testKey = 'test_key';
-            const testData = { value: 'test123' };
-
-            Storage.set( testKey, testData );
-            const retrieved = Storage.get( testKey );
-            section.tests.push( {
-                name: 'Storage - Set and Get',
-                result: retrieved?.value,
-                expected: 'test123',
-                pass: retrieved?.value === 'test123'
-            } );
-
-            // Test remove
-            Storage.remove( testKey );
-            const removed = Storage.get( testKey );
-            section.tests.push( {
-                name: 'Storage - Remove',
-                result: removed,
-                expected: null,
-                pass: removed === null
-            } );
-
-            // Test array storage
-            const testArray = [ 1, 2, 3, 4, 5 ];
-            Storage.set( testKey, testArray );
-            const retrievedArray = Storage.get( testKey );
-            section.tests.push( {
-                name: 'Storage - Array storage',
-                result: Array.isArray( retrievedArray ) && retrievedArray.length,
-                expected: 5,
-                pass: Array.isArray( retrievedArray ) && retrievedArray.length === 5
-            } );
-
-            // Cleanup
-            Storage.remove( testKey );
-
-            testResults.push( section );
-        }
-
-        function displayResults ()
-        {
-            const container = document.getElementById( 'test-results' );
-            container.innerHTML = '';
-
-            let totalTests = 0;
-            let passedTests = 0;
-            let failedTests = 0;
-
-            testResults.forEach( section =>
+            tests.forEach( test =>
             {
-                const sectionDiv = document.createElement( 'div' );
-                sectionDiv.className = 'test-section';
+                const result = safeSearch( testData, test.pattern );
+                const div = document.createElement( 'div' );
+                div.className = `test-result ${ result.isValid && result.matchCount === test.expected ? 'pass' : 'fail' }`;
 
-                const sectionTitle = document.createElement( 'h2' );
-                sectionTitle.textContent = section.name;
-                sectionDiv.appendChild( sectionTitle );
-
-                section.tests.forEach( test =>
+                if ( test.expected === 'error' )
                 {
-                    totalTests++;
-                    if ( test.pass ) passedTests++;
-                    else failedTests++;
+                    div.textContent = `Pattern: ${ test.pattern } - Expected error, got ${ result.isValid ? 'valid' : 'invalid' }`;
+                } else
+                {
+                    div.textContent = `Pattern: ${ test.pattern } - Expected ${ test.expected } matches, got ${ result.matchCount }`;
+                }
 
-                    const testDiv = document.createElement( 'div' );
-                    testDiv.className = `test-case ${ test.pass ? 'pass' : 'fail' }`;
-
-                    const testTitle = document.createElement( 'h4' );
-                    testTitle.textContent = `${ test.pass ? '✓' : '✗' } ${ test.name }`;
-                    testDiv.appendChild( testTitle );
-
-                    const testResult = document.createElement( 'div' );
-                    testResult.className = 'test-result';
-                    testResult.innerHTML = `
-                        <strong>Result:</strong> ${ JSON.stringify( test.result ) }<br>
-                        <strong>Expected:</strong> ${ JSON.stringify( test.expected ) }
-                    `;
-                    testDiv.appendChild( testResult );
-
-                    sectionDiv.appendChild( testDiv );
-                } );
-
-                container.appendChild( sectionDiv );
+                container.appendChild( div );
             } );
+        };
 
-            // Update stats
-            document.getElementById( 'stat-total' ).textContent = totalTests;
-            document.getElementById( 'stat-pass' ).textContent = passedTests;
-            document.getElementById( 'stat-fail' ).textContent = failedTests;
+        function runTests ( containerId, tests, validator )
+        {
+            const container = document.getElementById( containerId );
+            container.innerHTML = `<h3>${ validator.name } Tests</h3><button onclick="test${ validator.name.split( 'validate' )[ 1 ] }()">Run Tests</button>`;
+
+            tests.forEach( test =>
+            {
+                const result = validator( test.input );
+                const div = document.createElement( 'div' );
+                div.className = `test-result ${ result.isValid === test.expected ? 'pass' : 'fail' }`;
+                div.textContent = `Input: "${ test.input }" - Expected: ${ test.expected }, Got: ${ result.isValid }`;
+                if ( !result.isValid && result.error )
+                {
+                    div.textContent += ` - Error: ${ result.error }`;
+                }
+                container.appendChild( div );
+            } );
         }
     </script>
 </body>

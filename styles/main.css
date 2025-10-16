@@ -13,6 +13,25 @@ body {
     min-height: 100vh;
 }
 
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.logo-img {
+    width: 40px;
+    height: 40px;
+}
+
+.logo-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
 /* Skip Link */
 .skip-link {
     position: absolute;
@@ -31,7 +50,7 @@ body {
 
 /* Header */
 .header {
-    background: var(--gradient-primary);
+    background: #7D8D86;
     color: rgb(22, 32, 44);
     padding: var(--space-md) 0;
     box-shadow: var(--shadow-md);

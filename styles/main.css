@@ -18,7 +18,7 @@ body {
     position: absolute;
     top: -40px;
     left: 0;
-    background: var(--primary-500);
+    background: var(--primary-600);
     color: white;
     padding: var(--space-sm) var(--space-md);
     text-decoration: none;
@@ -32,7 +32,7 @@ body {
 /* Header */
 .header {
     background: var(--gradient-primary);
-    color: white;
+    color: rgb(22, 32, 44);
     padding: var(--space-md) 0;
     box-shadow: var(--shadow-md);
     position: sticky;
@@ -93,7 +93,7 @@ body {
 
 .nav-link:hover,
 .nav-link:focus {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgb(22, 32, 44);
     outline: none;
 }
 
@@ -485,9 +485,49 @@ body {
     margin-bottom: var(--space-xl);
 }
 
+.parent {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Background image */
+.image2 {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    filter: brightness(70%);
+}
+
+/* Foreground/profile image */
+.image1 {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 50%;
+    z-index: 2;
+    border: 4px solid #fff;
+}
+
 .about-section h3 {
     margin-bottom: var(--space-md);
-    color: var(--primary-700);
+    color: rgb(22, 32, 44);
+    image-orientation: flip;
+}
+
+.profile-size {
+    width: 300px;
+    height: auto;
+    border-radius: 20%;
 }
 
 .feature-list,
